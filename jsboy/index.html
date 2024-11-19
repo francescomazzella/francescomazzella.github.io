@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsBoy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Fira Mono', 'Courier New', Courier, monospace;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #canvas_container canvas {
+            width: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            box-sizing: border-box;
+            border-width: 20px;
+            border-style: ridge;
+            border-color: burlywood;
+        }
+
+                
+        .panel-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .panel-container .separator {
+            cursor: col-resize;
+            background-color: #aaa;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='30'><path d='M2 0 v30 M5 0 v30 M8 0 v30' fill='none' stroke='black'/></svg>");
+            background-repeat: no-repeat;
+            background-position: center;
+            width: 10px;
+            height: 100%;
+
+        /* prevent browser's built-in drag from interfering */
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .panel-container .left-panel {
+            background-color: #dde;
+            width: 60%;
+            height: 100%;
+            min-width: 10px;
+            overflow: auto;
+        }
+
+        .panel-container .right-panel {
+            background-color: #eee;
+            width: 40%;
+            height: 100%;
+            min-width: 10px;
+            overflow: auto;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="panel-container">
+        <div class="left-panel">
+            <table>
+                <tbody>
+                    <tr>
+                        <td><button onclick="jsboy.step()">Step</button></td>
+                        <td><button onclick="jsboy.frame()">Frame</button></td>
+                        <td>&nbsp;</td>
+                        <td><button onclick="jsboy.play()">Play/Pause</button></td>
+                        <td><button onclick="jsboy.turbo = !jsboy.turbo">Turbo</button></td>
+                        <td><button onclick="jsboy.reset(false)">Reset</button></td>
+                        <td>&nbsp;</td>
+                        <td><button onclick="saveState()">Save state</button></td>
+                        <td><button onclick="loadState()">Load state</button></td>
+                    </tr>
+                    <tr>
+                        <td colspan="6"><input type="file" id="rom_loader"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr>
+
+            <label for="verbose_logging"><input id="verbose_logging" type="checkbox"> Enable verbose logging</label>
+            <label for="update_master"><input id="update_master" type="checkbox"> Enable debug data updating</label>
+
+            <hr>
+
+            <table>
+                <caption>Breakpoints</caption>
+                <thead>
+                    <tr><td>Index</td><td>Condition</td><td>Enabled</td><td><button onclick="newBreakpoint()">Add ➕</button></td></tr>
+                </thead>
+                <tbody id="breakpoints_container">
+                    <template id="breakpoint_row">
+                        <tr><td><input></td><td><input></td><td><input type="checkbox"></td><td><button class="remove">Remove 🗑</button></td></tr>
+                    </template>
+                </tbody>
+            </table>
+
+            <hr>
+
+            <table>
+                <thead>
+                    <tr><td>Register</td><td>Value</td></tr>
+                </thead>
+                <tbody>
+                    <tr><td>AF</td><td><input id="af_register" value="0x0000"></td><td><button id="af_set">Set</button></td><td><input id="z_flag" type="checkbox">Z</td></tr>
+                    <tr><td>BC</td><td><input id="bc_register" value="0x0000"></td><td><button id="bc_set">Set</button></td><td><input id="n_flag" type="checkbox">N</td></tr>
+                    <tr><td>DE</td><td><input id="de_register" value="0x0000"></td><td><button id="de_set">Set</button></td><td><input id="h_flag" type="checkbox">H</td></tr>
+                    <tr><td>HL</td><td><input id="hl_register" value="0x0000"></td><td><button id="hl_set">Set</button></td><td><input id="c_flag" type="checkbox">C</td></tr>
+                    <tr><td>SP</td><td><input id="sp_register" value="0x0000"></td><td><button id="sp_set">Set</button></td></tr>
+                    <tr><td>PC</td><td><input id="pc_register" value="0x0000"></td><td><button id="pc_set">Set</button></td></tr>
+                    <tr><td colspan="2"><hr></td><td colspan="2"><button id="all_set">Set all</button></td></tr>
+                </tbody>
+            </table>
+
+            <hr>
+
+            <table>
+                <caption>I/O Map</caption>
+                <thead>
+                    <tr><td>Register</td><td>Value</td></tr>
+                </thead>
+                <tbody>
+                    <tr><td>DIV</td><td>(0xFF04)</td><td><input id="ff04_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>TIMA</td><td>(0xFF05)</td><td><input id="ff05_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>TMA</td><td>(0xFF06)</td><td><input id="ff06_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>TAC</td><td>(0xFF07)</td><td><input id="ff07_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>IF</td><td>(0xFF0F)</td><td><input id="ff0f_register" data-radix="2" value="0b00000000"></td></tr>
+                    <tr><td colspan="3"><hr></td></tr>
+                    <tr><td>LCDC</td><td>(0xFF40)</td><td><input id="ff40_register" data-radix="2" value="0b00000000"></td></tr>
+                    <tr><td>STAT</td><td>(0xFF41)</td><td><input id="ff41_register" data-radix="2" value="0b00000000"></td></tr>
+                    <tr><td>SCY</td><td>(0xFF42)</td><td><input id="ff42_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>SCX</td><td>(0xFF43)</td><td><input id="ff43_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>LY</td><td>(0xFF44)</td><td><input id="ff44_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>LYC</td><td>(0xFF45)</td><td><input id="ff45_register" data-radix="16" value="0x00"></td></tr>
+                    <tr><td>BGP</td><td>(0xFF47)</td><td><input id="ff47_register" data-radix="2" value="0b00000000"></td></tr>
+                </tbody>
+            </table>
+
+            <button onclick="jsboy.gpu.renderBackground()">Render Background</button>
+            <div id="debug_canvas_container"></div>
+
+        </div>
+        <div class="separator"></div>
+        <div class="right-panel">
+            <div id="canvas_container"></div>
+        </div>
+    </div>
+
+<script src="class-events.js"></script>
+<script src="zero-timeout.js"></script>
+
+<script src="cpu.js"></script>
+<script src="memory.js"></script>
+<script src="gpu.js"></script>
+<script src="joypad.js"></script>
+
+<script src="resampler.js"></script>
+<script src="newpapu.js"></script>
+
+<script src="js-boy.js"></script>
+
+<script>
+
+    window.addEventListener('load', () => {
+        let bpsString = localStorage.getItem('breakpoints');
+        if (bpsString) {
+            let bps = JSON.parse(bpsString);
+            jsboy._breakpoints = bps;
+
+            for (let bp of bps) {
+                newBreakpoint(`0x${bp.index.toString(16)}`, bp.condition, bp.enabled);
+            }
+
+            document.getElementById('verbose_logging').onchange = (e) => {
+                jsboy.cpu._verbose = e.target.checked;
+            };
+        }
+
+        document.getElementById('rom_loader').onchange = (e) => {
+            if (!e.target.files.length)
+                return;
+            
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                jsboy.loadRom(new Uint8Array(reader.result));
+            };
+            reader.readAsArrayBuffer(e.target.files[0]);
+        };
+    });
+
+    let jsboy = new JSBoy(document.getElementById('canvas_container'), undefined, document.getElementById('debug_canvas_container'));
+
+    jsboy.on('update', () => {
+
+        if (!document.getElementById('update_master').checked)
+            return;
+
+        document.getElementById('af_register').value = jsboy.cpu.registers.af.toString(16).padStart(4, 0);
+        document.getElementById('bc_register').value = jsboy.cpu.registers.bc.toString(16).padStart(4, 0);
+        document.getElementById('de_register').value = jsboy.cpu.registers.de.toString(16).padStart(4, 0);
+        document.getElementById('hl_register').value = jsboy.cpu.registers.hl.toString(16).padStart(4, 0);
+        document.getElementById('sp_register').value = jsboy.cpu.sp.toString(16).padStart(4, 0);
+        document.getElementById('pc_register').value = jsboy.cpu.pc.toString(16).padStart(4, 0);
+
+        document.getElementById('z_flag').checked = jsboy.cpu.registers.flags.z;
+        document.getElementById('n_flag').checked = jsboy.cpu.registers.flags.n;
+        document.getElementById('h_flag').checked = jsboy.cpu.registers.flags.h;
+        document.getElementById('c_flag').checked = jsboy.cpu.registers.flags.c;
+
+        for (let i = 0xFF04; i <= 0xFF47; i++) {
+            let elem = document.getElementById(i.toString(16) + '_register');
+            if (elem) {
+                let radix = elem.getAttribute('data-radix') || 16;
+                elem.value = jsboy.memory._io[i - 0xFF00].toString(radix).padStart(radix == 2 ? 8 : 2, 0);
+            }
+        }
+    });
+    
+    document.getElementById('af_set').onclick = () => { jsboy.cpu.registers.af = parseInt(document.getElementById('af_register').value, 16); };
+    document.getElementById('bc_set').onclick = () => { jsboy.cpu.registers.bc = parseInt(document.getElementById('bc_register').value, 16); };
+    document.getElementById('de_set').onclick = () => { jsboy.cpu.registers.de = parseInt(document.getElementById('de_register').value, 16); };
+    document.getElementById('hl_set').onclick = () => { jsboy.cpu.registers.hl = parseInt(document.getElementById('hl_register').value, 16); };
+    document.getElementById('sp_set').onclick = () => { jsboy.cpu.sp           = parseInt(document.getElementById('sp_register').value, 16); };
+    document.getElementById('pc_set').onclick = () => { jsboy.cpu.pc           = parseInt(document.getElementById('pc_register').value, 16); };
+    document.getElementById('all_set').onclick = () => {
+        jsboy.cpu.registers.af = parseInt(document.getElementById('af_register').value, 16);
+        jsboy.cpu.registers.bc = parseInt(document.getElementById('bc_register').value, 16);
+        jsboy.cpu.registers.de = parseInt(document.getElementById('de_register').value, 16);
+        jsboy.cpu.registers.hl = parseInt(document.getElementById('hl_register').value, 16);
+        jsboy.cpu.sp           = parseInt(document.getElementById('sp_register').value, 16);
+        jsboy.cpu.pc           = parseInt(document.getElementById('pc_register').value, 16);
+    };
+
+    function saveState() {
+        let result = jsboy.exportState();
+        let blob = new Blob([ JSON.stringify(result) ], { type: 'application/json' });
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'state.json';
+        a.click();
+    }
+
+    function loadState() {
+        let finput = document.createElement('input');
+        finput.type = 'file';
+        finput.onchange = _ => {
+            let reader = new FileReader();
+            reader.onload = _ => {
+                jsboy.importState(JSON.parse(reader.result));
+            };
+            reader.readAsBinaryString(finput.files[0]);
+        }
+        finput.click();
+    }
+
+    function newBreakpoint(index = '', condition = '', enabled = false) {
+        let tpl = document.getElementById('breakpoint_row');
+        let newRow = tpl.content.cloneNode(true);
+        let rmBtn = newRow.querySelector('.remove');
+        let inputs = newRow.querySelectorAll('input:not(.remove)')
+        inputs.forEach((elem) => {
+            elem.addEventListener('change', () => {
+                applyBreakpoints();
+            });
+        });
+        rmBtn.onclick = removeBreakpoint;
+        inputs[0].value = index;
+        inputs[1].value = condition;
+        inputs[2].checked = enabled;
+        document.getElementById('breakpoints_container').appendChild(newRow);
+    }
+
+    function removeBreakpoint(event) {
+        event.target.parentElement.parentElement.remove();
+        applyBreakpoints();
+    }
+
+    function applyBreakpoints() {
+        jsboy._breakpoints = [];
+        [].forEach.call(document.querySelectorAll('#breakpoints_container > tr'), v => {
+            let inputs = v.querySelectorAll('input:not(.remove)');
+            let breakpObj = {};
+            let index = parseInt(inputs[0].value);
+            if (index) {
+                breakpObj.index = index;
+                let expr = inputs[1].value.trim();
+                if (expr.length > 0) {
+                    let cond = Function(expr);
+                    if (cond) breakpObj.condition = cond;
+                }
+                breakpObj.enabled = inputs[2].checked;
+                jsboy._breakpoints.push(breakpObj);
+            }
+        });
+
+        console.log(jsboy._breakpoints.length.toString(), ' breakpoints applied');
+
+        localStorage.setItem('breakpoints', JSON.stringify(jsboy._breakpoints));
+    }
+
+
+
+    
+// function is used for dragging and moving
+function dragElement( element, direction)
+{
+    var   md; // remember mouse down info
+    const first  = document.querySelector(".panel-container .left-panel");
+    const second = document.querySelector(".panel-container .right-panel");
+    
+    element.onmousedown = onMouseDown;
+    
+    function onMouseDown( e )
+    {
+	//console.log("mouse down: " + e.clientX);
+	md = {e,
+	      offsetLeft:  element.offsetLeft,
+	      offsetTop:   element.offsetTop,
+	      firstWidth:  first.offsetWidth,
+	      secondWidth: second.offsetWidth};
+	document.onmousemove = onMouseMove;
+	document.onmouseup = () => { 
+	    //console.log("mouse up");
+	    document.onmousemove = document.onmouseup = null;
+	}
+    }
+    
+    function onMouseMove( e )
+    {
+	//console.log("mouse move: " + e.clientX);
+	var delta = {x: e.clientX - md.e.x,
+		     y: e.clientY - md.e.y};
+	
+	if (direction === "H" ) // Horizontal
+	{
+	    // prevent negative-sized elements
+	    delta.x = Math.min(Math.max(delta.x, -md.firstWidth),
+			       md.secondWidth);
+	    
+	    element.style.left = md.offsetLeft + delta.x + "px";
+	    first.style.width = (md.firstWidth + delta.x) + "px";
+	    second.style.width = (md.secondWidth - delta.x) + "px";
+	}
+    }
+}
+
+
+dragElement( document.querySelector(".separator"), "H" );
+
+</script>
+
+</body>
+</html>
