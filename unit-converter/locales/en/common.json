@@ -1,0 +1,23 @@
+{
+  "title": "Unit Converter",
+  "description": "A simple unit converter",
+  "author": "Author",
+
+  "error": "Error",
+  "offline": "You are offline",
+
+  "base rate" : "1 {{unitFrom}} = {{rate}} {{unitTo}}",
+  "provider": "Provided by <1>{{provider}}</1>",
+  "updated": "Updated {{date}}",
+
+  "conversion select": "Select conversion",
+  "from field": "From",
+  "to field": "To",
+  "from unit": "From unit",
+  "to unit": "To unit",
+
+  "clear": "Clear",
+  "backspace": "Backspace",
+  "change sign": "Change sign",
+  "decimal point": "Decimal point"
+}

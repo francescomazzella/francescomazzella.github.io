@@ -1,0 +1,24 @@
+{
+  "title": "Convertitore di unità",
+  "description": "Un semplice convertitore di unità",
+  "author": "Autore",
+
+  "error": "Errore",
+  "offline": "Sei offline",
+
+  "rate": "Tasso di cambio",
+  "last updated": "Ultimo aggiornamento",
+  "source": "Fonte",
+
+
+  "conversion select": "Seleziona conversione",
+  "from field": "Da",
+  "to field": "A",
+  "from unit": "Da unità",
+  "to unit": "A unità",
+
+  "clear": "Cancella",
+  "backspace": "Spazio indietro",
+  "change sign": "Cambia segno",
+  "decimal point": "Punto decimale"
+}
